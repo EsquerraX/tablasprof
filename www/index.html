@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Tablas Pro Torneo - Offline</title>
+<style>
+:root{--primary:#22c55e;--bg:#0f172a;--card:#1e293b;--border:#334155}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui;background:var(--bg);color:#fff}
+header{padding:14px 16px;background:#020617;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:20;border-bottom:1px solid var(--border)}
+.logo{font-weight:900;font-size:18px}.logo span{color:var(--primary)}
+.badge{background:var(--primary);color:#000;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:800}
+.tabs{display:flex;gap:8px;padding:10px;overflow:auto;background:#020617;border-bottom:1px solid var(--border)}
+.tab{padding:8px 14px;border-radius:20px;background:var(--card);border:1px solid var(--border);white-space:nowrap;font-size:13px;cursor:pointer}
+.tab.active{background:var(--primary);color:#000;font-weight:700;border-color:var(--primary)}
+.container{padding:12px}
+.card{background:var(--card);border-radius:16px;padding:12px;border:1px solid var(--border);margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:#94a3b8;font-size:11px;text-transform:uppercase;padding:8px;text-align:left;border-bottom:1px solid var(--border)}
+td{padding:10px 8px;border-bottom:1px solid #1e293b}
+.pos{font-weight:800;width:24px;text-align:center}
+.team{display:flex;align-items:center;gap:8px;font-weight:600}
+.pts{font-weight:900;color:var(--primary)}
+input,select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:#020617;color:#fff;margin-bottom:10px}
+.btn{background:var(--primary);color:#000;border:0;padding:12px;border-radius:10px;font-weight:800;width:100%;cursor:pointer}
+.btn-sec{background:transparent;border:1px solid var(--border);color:#fff}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+small{color:#94a3b8}
+.editable{cursor:pointer;border-bottom:1px dashed #475569}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">TABLAS <span>PRO</span></div>
+<div><span class="badge">OFFLINE</span></div>
+</header>
+
+<div class="tabs">
+<div class="tab active" onclick="showTab('posiciones')">📊 Posiciones</div>
+<div class="tab" onclick="showTab('partidos')">⚽ Partidos</div>
+<div class="tab" onclick="showTab('goleadores')">🎯 Goleadores</div>
+<div class="tab" onclick="showTab('config')">⚙️ Configurar</div>
+</div>
+
+<div class="container">
+<div id="tab-posiciones">
+<div class="card">
+<h3 style="margin:0 0 8px 0">Torneo <span id="nombreTorneoTitulo" style="color:#22c55e">Apertura 2026</span></h3>
+<small id="statusOffline">100% Offline - Guardado local</small>
+<table id="tablaPos">
+<thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>DG</th><th>PTS</th></tr></thead>
+<tbody></tbody>
+</table>
+</div>
+<div class="card">
+<div class="row">
+<button class="btn btn-sec" onclick="exportar()">Exportar</button>
+<button class="btn btn-sec" onclick="limpiarTorneo()">Reiniciar</button>
+</div>
+</div>
+</div>
+
+<div id="tab-partidos" style="display:none">
+<div class="card">
+<h3>Nuevo Partido</h3>
+<select id="equipoLocal"></select>
+<select id="equipoVisita"></select>
+<div class="row">
+<input type="number" id="golLocal" placeholder="Goles Local" min="0">
+<input type="number" id="golVisita" placeholder="Goles Visita" min="0">
+</div>
+<button class="btn" onclick="agregarPartido()">Guardar Partido</button>
+</div>
+<div id="listaPartidos"></div>
+</div>
+
+<div id="tab-goleadores" style="display:none">
+<div class="card">
+<h3>Agregar Goleador</h3>
+<input id="nombreGoleador" placeholder="Nombre jugador">
+<select id="equipoGoleador"></select>
+<input type="number" id="golesJugador" placeholder="Goles" min="1" value="1">
+<button class="btn" onclick="agregarGoleador()">Agregar</button>
+</div>
+<div class="card"><table id="tablaGoles"><thead><tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Goles</th></tr></thead><tbody></tbody></table></div>
+</div>
+
+<div id="tab-config" style="display:none">
+<div class="card">
+<h3>Configurar Torneo</h3>
+<input id="nombreTorneo" placeholder="Nombre Torneo" value="Apertura 2026">
+<textarea id="listaEquipos" style="width:100%;height:120px;padding:12px;border-radius:10px;border:1px solid #334155;background:#020617;color:#fff" placeholder="Un equipo por linea
+Ej:
+Tigres
+Rayados
+America
+Chivas"></textarea>
+<button class="btn" onclick="guardarConfig()">Guardar Equipos</button>
+<p style="font-size:11px;color:#94a3b8;margin-top:10px">* Todo se guarda offline. No necesitas internet. Listo para APK.</p>
+</div>
+</div>
+</div>
+
+<script>
+// ==== DATOS OFFLINE CORREGIDOS ====
+let equiposDefault = ["Tigres","Rayados","America","Chivas","Cruz Azul","Pumas","Santos","Toluca"];
+let state = JSON.parse(localStorage.getItem('tablaspro_state') || 'null') || {
+  nombre: "Apertura 2026",
+  equipos: equiposDefault,
+  partidos: [],
+  goleadores: []
+};
+
+function save(){ localStorage.setItem('tablaspro_state', JSON.stringify(state)); }
+
+function calcularTabla(){
+  let tabla = {};
+  state.equipos.forEach(eq=>{ tabla[eq]={PJ:0,PG:0,PE:0,PP:0,GF:0,GC:0,DG:0,PTS:0} });
+  state.partidos.forEach(p=>{
+    if(!tabla[p.local]||!tabla[p.visita]) return;
+    tabla[p.local].PJ++; tabla[p.visita].PJ++;
+    tabla[p.local].GF+=p.golLocal; tabla[p.local].GC+=p.golVisita;
+    tabla[p.visita].GF+=p.golVisita; tabla[p.visita].GC+=p.golLocal;
+    if(p.golLocal>p.golVisita){ tabla[p.local].PG++; tabla[p.local].PTS+=3; tabla[p.visita].PP++; }
+    else if(p.golLocal<p.golVisita){ tabla[p.visita].PG++; tabla[p.visita].PTS+=3; tabla[p.local].PP++; }
+    else { tabla[p.local].PE++; tabla[p.visita].PE++; tabla[p.local].PTS++; tabla[p.visita].PTS++; }
+  });
+  Object.keys(tabla).forEach(eq=>{ tabla[eq].DG = tabla[eq].GF - tabla[eq].GC; });
+  let arr = Object.entries(tabla).map(([equipo,d])=>({equipo,...d})).sort((a,b)=> b.PTS - a.PTS || b.DG - a.DG || b.GF - a.GF);
+  return arr;
+}
+
+function render(){
+  document.getElementById('nombreTorneoTitulo').innerText = state.nombre;
+  document.getElementById('nombreTorneo').value = state.nombre;
+  document.getElementById('listaEquipos').value = state.equipos.join("\n");
+  // selects
+  let opts = state.equipos.map(e=>`<option value="${e}">${e}</option>`).join('');
+  document.getElementById('equipoLocal').innerHTML = opts;
+  document.getElementById('equipoVisita').innerHTML = opts;
+  document.getElementById('equipoGoleador').innerHTML = opts;
+  // tabla pos
+  let tabla = calcularTabla();
+  document.querySelector('#tablaPos tbody').innerHTML = tabla.map((t,i)=>`<tr><td class="pos">${i+1}</td><td class="team">${t.equipo}</td><td>${t.PJ}</td><td>${t.DG>0?'+'+t.DG:t.DG}</td><td class="pts">${t.PTS}</td></tr>`).join('');
+  // partidos
+  document.getElementById('listaPartidos').innerHTML = state.partidos.slice().reverse().map((p,idx)=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><b>${p.local} ${p.golLocal} - ${p.golVisita} ${p.visita}</b><br><small>${p.fecha}</small></div><button onclick="borrarPartido(${state.partidos.length-1-idx})" style="background:#ef4444;border:0;color:#fff;border-radius:6px;padding:6px 10px">X</button></div>`).join('') || '<div class="card"><small>Sin partidos aún</small></div>';
+  // goleadores
+  let gols = [...state.goleadores].sort((a,b)=>b.goles-a.goles);
+  document.querySelector('#tablaGoles tbody').innerHTML = gols.map((g,i)=>`<tr><td>${i+1}</td><td class="editable" onclick="editarGoleador(${state.goleadores.indexOf(g)})">${g.nombre}</td><td>${g.equipo}</td><td class="pts">${g.goles}</td></tr>`).join('');
+}
+
+function showTab(id){
+  document.querySelectorAll('[id^=tab-]').forEach(el=>el.style.display='none');
+  document.getElementById('tab-'+id).style.display='block';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+window.agregarPartido=()=>{
+  let local=document.getElementById('equipoLocal').value;
+  let visita=document.getElementById('equipoVisita').value;
+  let gl=parseInt(document.getElementById('golLocal').value);
+  let gv=parseInt(document.getElementById('golVisita').value);
+  if(local===visita){ alert('Equipos diferentes'); return; }
+  if(isNaN(gl)||isNaN(gv)){ alert('Pon goles'); return; }
+  state.partidos.push({local,visita,golLocal:gl,golVisita:gv,fecha:new Date().toLocaleDateString()});
+  save(); render();
+  document.getElementById('golLocal').value=''; document.getElementById('golVisita').value='';
+}
+window.borrarPartido=(i)=>{ if(confirm('Borrar partido?')){ state.partidos.splice(i,1); save(); render(); } }
+window.agregarGoleador=()=>{
+  let nombre=document.getElementById('nombreGoleador').value.trim();
+  let equipo=document.getElementById('equipoGoleador').value;
+  let goles=parseInt(document.getElementById('golesJugador').value)||1;
+  if(!nombre) return alert('Nombre');
+  let ex = state.goleadores.find(g=>g.nombre.toLowerCase()===nombre.toLowerCase());
+  if(ex){ ex.goles+=goles; } else { state.goleadores.push({nombre,equipo,goles}); }
+  save(); render();
+  document.getElementById('nombreGoleador').value='';
+}
+window.guardarConfig=()=>{
+  let nombre=document.getElementById('nombreTorneo').value.trim()||"Torneo";
+  let lista=document.getElementById('listaEquipos').value.split("\n").map(s=>s.trim()).filter(Boolean);
+  if(lista.length<2){ alert('Mínimo 2 equipos'); return; }
+  state.nombre=nombre; state.equipos=lista; save(); render(); alert('Torneo guardado OFFLINE');
+}
+window.exportar=()=>{
+  let blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=state.nombre+".json"; a.click();
+}
+window.limpiarTorneo=()=>{ if(confirm('Reiniciar torneo? Se borran partidos y goleadores')){ state.partidos=[]; state.goleadores=[]; save(); render(); } }
+window.editarGoleador=(i)=>{ let nuevo=prompt('Nuevo nombre', state.goleadores[i].nombre); if(nuevo){ state.goleadores[i].nombre=nuevo; save(); render(); } }
+
+render();
+</script>
+</body>
+</html>

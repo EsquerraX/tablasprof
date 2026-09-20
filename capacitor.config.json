@@ -1,0 +1,6 @@
+{
+  "appId": "com.tablaspro.torneo",
+  "appName": "Tablas Pro Torneo",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
